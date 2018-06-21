@@ -1,0 +1,15 @@
+{
+  "name": "calypso_ultrasonic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "run": "node connect"
+  },
+  "author": "Julien Pile",
+  "license": "ISC",
+  "dependencies": {
+    "noble": "^1.9.1"
+  }
+}
