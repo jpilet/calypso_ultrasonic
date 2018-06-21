@@ -8,7 +8,7 @@
     "run": "node connect"
   },
   "author": "Julien Pile",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "noble": "^1.9.1"
   }
