@@ -1,5 +1,7 @@
 var noble = require('noble');
 
+var doCalibration = false;
+
 var deviceInfoServiceUuid = '180a';
 var manufacturerNameCharateristicUuid = '2a29'; // String (Calypso)
 var modelNumberCharateristicUuid  /* (UP10) */  = '2a24';
@@ -30,6 +32,7 @@ noble.on('stateChange', function(state) {
     noble.startScanning([dataServiceUuid], false);
   }
   else {
+    console.warn("Can't start bluetooth. State: ", state);
     noble.stopScanning();
   }
 })
@@ -55,7 +58,12 @@ noble.on('discover', function(peripheral) {
     var notifyCharacteristic = undefined;
     peripheral.discoverSomeServicesAndCharacteristics(
         [dataServiceUuid, deviceInfoServiceUuid ],
-        [notifyCharacteristicUuid, sensorsCharacteristicUuid, softwareRevisionCharateristicUuid],
+        [
+          notifyCharacteristicUuid,
+          sensorsCharacteristicUuid,
+          softwareRevisionCharateristicUuid,
+          eCompassCalibrationCharacteristicUuid
+        ],
         function(error, services, characteristics) {
           characteristics.forEach(function(characteristic) {
             console.log('found characteristic:', characteristic.uuid);
@@ -65,6 +73,10 @@ noble.on('discover', function(peripheral) {
               configure(characteristic, true);
             } else if (characteristic.uuid == softwareRevisionCharateristicUuid) {
               readFirmwareVersion(characteristic);
+            } else if (characteristic.uuid == eCompassCalibrationCharacteristicUuid) {
+              if (doCalibration) {
+                calibrate(characteristic);
+              }
             } else {
               console.log('unknown characteristic: ', characteristic.uuid);
             }
@@ -98,7 +110,10 @@ function listenData(notifyCharacteristic) {
       temperature: data.readUInt8(5) - 100,  // Celsius degrees
       roll: (data.readUInt8(6) ? data.readUInt8(6) - 90 : undefined),  // degrees
       pitch: (data.readUInt8(7) ? data.readUInt8(7) - 90 : undefined),  // degrees
-      heading: (data.readUInt16LE(8) ? 360 - data.readUInt16LE(8) : undefined)  // degrees
+      // a 0x0000 reading in bytes 8 and 9 could mean either: no data or reading 0 deg.
+      // The calypso unit sends compass data together with roll and pitch, because
+      // there is only one activation flag. So we check roll.
+      heading: (data.readUInt8(6) ? (360 - data.readUInt16LE(8)) % 360 : undefined)  // degrees
     };
     console.warn(reading);
   });
@@ -110,7 +125,7 @@ function listenData(notifyCharacteristic) {
 }
 
 function configure(sensorsCharacteristic, onoff) {
-  var buffer = Buffer.from( [onoff ? 1 : 0] );
+  var buffer = new Buffer( [onoff ? 1 : 0] );
   sensorsCharacteristic.write(buffer, false, function(err) {
     if (err) {
       console.warn('while writing to sensorsCharacteristic: ', err);
@@ -128,4 +143,13 @@ function readFirmwareVersion(characteristic) {
     console.log('Firmware version: ', data.toString('ascii'));
     console.log(data);
   });
+}
+
+function calibrate(characteristic) {
+  console.log('Starting calibration...');
+  configure(characteristic, true);
+  setTimeout(function() { 
+    console.log('saving calibration.');
+    configure(characteristic, false);
+  }, 60*1000);
 }
