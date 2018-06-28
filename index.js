@@ -24,7 +24,7 @@ module.exports.stopScanning = function () {
   noble.stopScanning();
 };
 
-module.exports.scan = function (cb) {
+module.exports.scan = function (cb, allowDuplicates) {
   noble.on('stateChange', function(state) {
     if (state === 'poweredOn') {
       //
@@ -32,7 +32,7 @@ module.exports.scan = function (cb) {
       // to begin scanning for services. Pass an empty array to
       // scan for all services (uses more time and power).
       //
-      noble.startScanning([dataServiceUuid], false);
+      noble.startScanning([dataServiceUuid], allowDuplicates);
     }
     else {
       noble.stopScanning();

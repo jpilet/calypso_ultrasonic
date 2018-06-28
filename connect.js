@@ -6,7 +6,7 @@ function peripheralDiscovered(err, peripheral) {
     console.warn(err);
     return;
   }
-  console.log('found peripheral:', peripheral.id);
+  console.log('found peripheral:', peripheral.address);
 
   calypso.stopScanning();
   calypso.connect(peripheral, function(err) {
