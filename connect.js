@@ -6,22 +6,25 @@ function peripheralDiscovered(err, peripheral) {
     console.warn(err);
     return;
   }
-  //
-  // The advertisment data contains a name, power level (if available),
-  // certain advertised service uuids, as well as manufacturer data,
-  // which could be formatted as an iBeacon.
-  //
-  console.log('found peripheral:', peripheral.advertisement);
+  console.log('found peripheral:', peripheral.id);
 
   calypso.stopScanning();
-  calypso.connect(peripheral, function(err, sensorData) {
+  calypso.connect(peripheral, function(err) {
     if (err) {
-      console.warn('Device error, trying to reconnect: ', err);
-      calypso.scan(peripheralDiscovered);
+      console.warn(err);
       return;
     }
-    console.log(sensorData);
+    peripheral.listenData(handleData);
   });
+}
+
+function handleData(err, sensorData) {
+  if (err) {
+    console.warn('Device error, trying to reconnect: ', err);
+    calypso.scan(peripheralDiscovered);
+    return;
+  }
+  console.log(sensorData);
 }
 
 calypso.scan(peripheralDiscovered);

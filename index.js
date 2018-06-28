@@ -1,4 +1,5 @@
 var noble = require('noble');
+var Peripheral = require('noble/lib/peripheral.js');
 
 var deviceInfoServiceUuid = '180a';
 var manufacturerNameCharateristicUuid = '2a29'; // String (Calypso)
@@ -40,14 +41,14 @@ module.exports.scan = function (cb) {
   });
 
   noble.on('discover', function(peripheral) {
-    cb(undefined, peripheral);
+    if (peripheral.advertisement.localName.match(/ULTRASONIC/)) {
+      cb(undefined, peripheral);
+    }
   });
 };
 
 module.exports.connect = function(peripheral, cb) {
-  //
   // Once the peripheral has been discovered, then connect to it.
-  //
   peripheral.connect(function(err) {
     //
     // Once the peripheral has been connected, then discover the
@@ -56,23 +57,31 @@ module.exports.connect = function(peripheral, cb) {
     var notifyCharacteristic = undefined;
     peripheral.discoverSomeServicesAndCharacteristics(
         [dataServiceUuid, deviceInfoServiceUuid ],
-        [notifyCharacteristicUuid, sensorsCharacteristicUuid, softwareRevisionCharateristicUuid],
+        [
+          notifyCharacteristicUuid,
+          sensorsCharacteristicUuid,
+          softwareRevisionCharateristicUuid,
+          eCompassCalibrationCharacteristicUuid
+        ],
         function(error, services, characteristics) {
           characteristics.forEach(function(characteristic) {
-            console.log('found characteristic:', characteristic.uuid);
             if (characteristic.uuid == notifyCharacteristicUuid) {
-              notifyCharacteristic = characteristic;
+              peripheral.listenData = function(cb) {
+                listenData(characteristic, cb);
+              };
             } else if (characteristic.uuid == sensorsCharacteristicUuid) {
-              configure(characteristic, true);
+              configure(characteristic, true, cb);
+            } else if (characteristic.uuid == eCompassCalibrationCharacteristicUuid) {
+              peripheral.calibrate = function(cb) {
+                calibrate(characteristic, cb);
+              };
             } else if (characteristic.uuid == softwareRevisionCharateristicUuid) {
               readFirmwareVersion(characteristic);
             } else {
               console.log('unknown characteristic: ', characteristic.uuid);
             }
           });
-          if (notifyCharacteristic) {
-            listenData(notifyCharacteristic, cb);
-          } else {
+          if (!peripheral.listenData || !peripheral.calibrate) {
             cb(new Error('missing characteristics, disconnecting.'));
             peripheral.disconnect(function(err) {
               if (err) {
@@ -80,6 +89,8 @@ module.exports.connect = function(peripheral, cb) {
               }
               console.log('disconnected.');
             });
+          } else {
+            cb();
           }
         }
     ); // discover characteristics
@@ -104,7 +115,10 @@ function listenData(notifyCharacteristic, cb) {
       temperature: data.readUInt8(5) - 100,  // Celsius degrees
       roll: (data.readUInt8(6) ? data.readUInt8(6) - 90 : undefined),  // degrees
       pitch: (data.readUInt8(7) ? data.readUInt8(7) - 90 : undefined),  // degrees
-      heading: (data.readUInt16LE(8) ? 360 - data.readUInt16LE(8) : undefined)  // degrees
+      // a 0x0000 reading in bytes 8 and 9 could mean either: no data or reading 0 deg.
+      // The calypso unit sends compass data together with roll and pitch, because
+      // there is only one activation flag. So we check roll.
+      heading: (data.readUInt8(6) ? (360 - data.readUInt16LE(8)) % 360 : undefined)  // degrees
     };
     cb(undefined, reading);
   });
@@ -115,11 +129,15 @@ function listenData(notifyCharacteristic, cb) {
   });
 }
 
-function configure(sensorsCharacteristic, onoff) {
-  var buffer = Buffer.from( [onoff ? 1 : 0] );
+function configure(sensorsCharacteristic, onoff, cb) {
+  var buffer = new Buffer( [onoff ? 1 : 0] );
   sensorsCharacteristic.write(buffer, false, function(err) {
     if (err) {
-      console.warn('while writing to sensorsCharacteristic: ', err);
+      if (cb) {
+        cb(new Error('while writing to sensorsCharacteristic: ' + err));
+      }
+    } else {
+      cb();
     }
   });
 }
@@ -133,5 +151,18 @@ function readFirmwareVersion(characteristic) {
 
     console.log('Firmware version: ', data.toString('ascii'));
     console.log(data);
+  });
+}
+
+function calibrate(characteristic, cb) {
+  configure(characteristic, true, function(err) {
+    if (err) {
+      cb(err);
+      return;
+    }
+    setTimeout(function() { 
+      console.log('saving calibration.');
+      configure(characteristic, false, cb);
+    }, 60*1000);
   });
 }
