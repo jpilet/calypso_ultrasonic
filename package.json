@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "run": "node connect"
   },
-  "author": "Julien Pile",
+  "author": "Julien Pilet",
   "license": "MIT",
   "dependencies": {
     "noble": "^1.9.1"
