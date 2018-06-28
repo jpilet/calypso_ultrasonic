@@ -24,27 +24,33 @@ module.exports.stopScanning = function () {
   noble.stopScanning();
 };
 
-module.exports.scan = function (cb, allowDuplicates) {
-  noble.on('stateChange', function(state) {
-    if (state === 'poweredOn') {
-      //
-      // Once the BLE radio has been powered on, it is possible
-      // to begin scanning for services. Pass an empty array to
-      // scan for all services (uses more time and power).
-      //
-      noble.startScanning([dataServiceUuid], allowDuplicates);
-    }
-    else {
-      noble.stopScanning();
-      cb(new Error(state));
-    }
-  });
-
+module.exports.setDiscoveredCallback = function(cb) {
   noble.on('discover', function(peripheral) {
     if (peripheral.advertisement.localName.match(/ULTRASONIC/)) {
       cb(undefined, peripheral);
     }
   });
+}
+
+module.exports.scan = function (cb, allowDuplicates) {
+  if (noble.state == 'poweredOn') {
+    noble.startScanning([dataServiceUuid], allowDuplicates);
+  } else {
+    noble.on('stateChange', function(state) {
+      if (state === 'poweredOn') {
+        //
+        // Once the BLE radio has been powered on, it is possible
+        // to begin scanning for services. Pass an empty array to
+        // scan for all services (uses more time and power).
+        //
+        noble.startScanning([dataServiceUuid], allowDuplicates);
+      }
+      else {
+        noble.stopScanning();
+        cb(new Error(state));
+      }
+    });
+  }
 };
 
 module.exports.connect = function(peripheral, cb) {

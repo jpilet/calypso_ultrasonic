@@ -27,5 +27,6 @@ function handleData(err, sensorData) {
   console.log(sensorData);
 }
 
-calypso.scan(peripheralDiscovered);
+calypso.setDiscoveredCallback(peripheralDiscovered);
+calypso.scan(function(err) { console.warn(err); });
 
