@@ -1,4 +1,6 @@
-// This is an example showing how to access Calypso Ultrasonic data
+// This is an example showing how to calibrate the magnetic compass of
+// a Calypso Ultrasonic wind sensor.
+
 var calypso = require('./index');
 
 function peripheralDiscovered(err, peripheral) {
