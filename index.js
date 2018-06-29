@@ -47,7 +47,9 @@ module.exports.scan = function (cb, allowDuplicates) {
       }
       else {
         noble.stopScanning();
-        cb(new Error(state));
+        if (cb) {
+          cb(new Error(state));
+        }
       }
     });
   }
