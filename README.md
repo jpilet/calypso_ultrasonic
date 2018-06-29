@@ -10,9 +10,10 @@ node connect
 ```
 
 ## Examples
-[Basic connection](connect.js)
-[Auto-reconnect after connection loss](auto-reconnect.js)
-[Calibration](calibrate.js)
+
+ - [Basic connection](connect.js)
+ - [Auto-reconnect after connection loss](auto-reconnect.js)
+ - [Calibration](calibrate.js)
 
 API
 ---
