@@ -78,7 +78,7 @@ module.exports.connect = function(peripheral, cb) {
                 listenData(characteristic, cb);
               };
             } else if (characteristic.uuid == sensorsCharacteristicUuid) {
-              configure(characteristic, true, cb);
+              configure(characteristic, true);
             } else if (characteristic.uuid == eCompassCalibrationCharacteristicUuid) {
               peripheral.calibrate = function(cb) {
                 calibrate(characteristic, cb);
@@ -145,7 +145,9 @@ function configure(sensorsCharacteristic, onoff, cb) {
         cb(new Error('while writing to sensorsCharacteristic: ' + err));
       }
     } else {
-      cb();
+      if (cb) {
+        cb();
+      }
     }
   });
 }
@@ -165,7 +167,7 @@ function readFirmwareVersion(characteristic) {
 function calibrate(characteristic, cb) {
   configure(characteristic, true, function(err) {
     if (err) {
-      cb(err);
+      (cb || console.warn)(err);
       return;
     }
     setTimeout(function() { 
